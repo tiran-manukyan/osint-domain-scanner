@@ -1,0 +1,62 @@
+.scan-card {
+    height: 100%;
+    border-radius: 12px;
+    transition: all 0.2s ease-in-out;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.scan-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+.scan-card-content {
+    padding: 20px;
+}
+
+.domain-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.domain-icon-container {
+    margin-right: 12px;
+    padding: 8px;
+    border-radius: 50%;
+    background-color: rgba(58, 134, 255, 0.1);
+}
+
+.domain-title {
+    max-width: 70%;
+    font-weight: 600;
+    font-size: 1.1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.status-chip {
+    margin-bottom: 16px;
+    font-weight: 500;
+}
+
+.scan-details {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+}
+
+.detail-label {
+    font-weight: 500;
+    color: #6b7280;
+}
+
+.view-details-hint {
+    margin-top: 1rem !important;
+    text-align: left;
+    color: #3a86ff;
+    font-size: 0.75rem;
+    font-weight: 500;
+}

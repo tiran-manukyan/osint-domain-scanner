@@ -1,0 +1,94 @@
+.scan-modal-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.scan-modal-header-text {
+  font-weight: 600;
+  color: #3a86ff;
+}
+
+.scan-modal-domain {
+  margin-top: 4px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.scan-modal-content {
+  padding: 24px;
+}
+
+.scan-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.scan-info-card {
+  padding: 16px;
+  border-radius: 8px;
+  background-color: #f8fafc;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.scan-info-label {
+  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.timing-info {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.timing-label {
+  font-weight: 500;
+}
+
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.results-title {
+  font-weight: 600;
+}
+
+.results-container {
+  padding: 20px;
+  border-radius: 8px;
+  background-color: #f8fafc;
+  max-height: 400px;
+  overflow: auto;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  font-family: "Roboto Mono", monospace;
+}
+
+.results-text {
+  white-space: pre-wrap;
+  font-family: "Roboto Mono", monospace;
+  font-size: 0.875rem;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.no-results {
+  color: #6b7280;
+  text-align: center;
+  padding: 24px 0;
+  font-style: italic;
+}
+
+@media (max-width: 600px) {
+  .scan-info-grid {
+    grid-template-columns: 1fr;
+  }
+}

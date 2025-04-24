@@ -1,0 +1,33 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: osint-webapp
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/osint
+    username: postgres
+    password: postgres
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  liquibase:
+    enabled: true
+    change-log: classpath:liquibase/changelog-root.yml
+    contexts: schema
+
+logging:
+  level:
+    org.springframework: DEBUG
+
+scan:
+  max-active-containers: 10
