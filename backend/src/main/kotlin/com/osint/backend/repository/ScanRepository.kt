@@ -8,7 +8,7 @@ import java.util.*
 
 interface ScanRepository : JpaRepository<ScanEntity, UUID> {
 
-    fun findByDomainIsAndStatusIs(domain: String, status: ScanStatus): Optional<ScanEntity>
+    fun findByDomainAndStatus(domain: String, status: ScanStatus): Optional<ScanEntity>
 
     fun findTopByDomainOrderByStartedAtDesc(domain: String): ScanEntity?
 

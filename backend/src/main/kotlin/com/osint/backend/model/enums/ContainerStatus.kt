@@ -1,4 +1,4 @@
-package com.osint.backend.service
+package com.osint.backend.model.enums
 
 enum class ContainerStatus {
     NOT_EXIST,

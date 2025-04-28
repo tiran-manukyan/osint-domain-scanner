@@ -1,10 +1,12 @@
+package com.osint.backend.util
+
 import java.net.URI
 
 object DomainUtils {
     private val DOMAIN_REGEX =  Regex("""^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$""")
 
-    fun normalize(input: String): String {
-        val trimmed = input.trim()
+    fun String.normalizeDomain(): String {
+        val trimmed = this.trim()
         val url = if (
             trimmed.startsWith("http://", ignoreCase = true) ||
             trimmed.startsWith("https://", ignoreCase = true)

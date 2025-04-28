@@ -1,5 +1,6 @@
 package com.osint.backend.service
 
+import com.osint.backend.model.enums.ContainerStatus
 import com.osint.backend.util.ScanNamingUtils
 import mu.KotlinLogging
 import org.springframework.scheduling.annotation.Async
@@ -10,8 +11,8 @@ import java.util.concurrent.TimeUnit
 private val log = KotlinLogging.logger {}
 
 @Component
-class DockerExecutor(
-) {
+class DockerExecutor {
+
     @Async("scanExecutor")
     fun runDetachedScan(domain: String, scanId: UUID) {
         val containerName = ScanNamingUtils.getContainerName(scanId, domain)
@@ -28,101 +29,99 @@ class DockerExecutor(
         ProcessBuilder(command)
             .redirectErrorStream(true)
             .start()
+            .also { log.info { "Started Docker container: $containerName" } }
     }
 
-    fun extractScanOutput(containerName: String): String {
-        return try {
-            val process = ProcessBuilder("docker", "logs", containerName)
-                .redirectErrorStream(true)
-                .start()
+    fun extractScanOutput(containerName: String): String = runCatching {
+        ProcessBuilder("docker", "logs", containerName)
+            .redirectErrorStream(true)
+            .start()
+            .inputStream
+            .bufferedReader()
+            .use { it.readText().trim() }
+    }.onFailure { e ->
+        log.error(e) { "Failed to get logs from container '$containerName'" }
+    }.getOrDefault("[ERROR] Failed to retrieve logs")
 
-            process.inputStream.bufferedReader().readText().trim()
-        } catch (e: Exception) {
-            log.error(e) { "Failed to get logs from container '$containerName'" }
-            "[ERROR] Failed to retrieve logs"
+    fun destroyContainer(containerName: String): Boolean = runCatching {
+        ProcessBuilder("docker", "rm", "-f", containerName)
+            .redirectErrorStream(true)
+            .start()
+            .apply {
+                if (!waitFor(10, TimeUnit.SECONDS)) {
+                    destroyForcibly()
+                    log.warn { "Timeout while removing container: $containerName" }
+                    return false
+                }
+            }.exitValue()
+    }.fold(
+        onSuccess = { exitCode ->
+            when (exitCode) {
+                0 -> {
+                    log.info { "Successfully removed container: $containerName" }
+                    true
+                }
+
+                else -> {
+                    log.error { "Docker exited with code $exitCode while removing container: $containerName" }
+                    false
+                }
+            }
+        },
+        onFailure = { e ->
+            log.error(e) { "Exception while removing container '$containerName'" }
+            false
         }
-    }
+    )
 
-
-    fun destroyContainer(containerName: String): Boolean {
-        return try {
-            val process = ProcessBuilder("docker", "rm", "-f", containerName)
-                .redirectErrorStream(true)
+    fun getContainerStatus(containerName: String): ContainerStatus {
+        return runCatching {
+            val process = ProcessBuilder(
+                "docker", "inspect", "-f", "{{.State.Status}}", containerName
+            )
+                .redirectErrorStream(false)
                 .start()
 
             val finished = process.waitFor(10, TimeUnit.SECONDS)
-
             if (!finished) {
                 process.destroyForcibly()
-                log.warn("Timeout while removing container: {}", containerName)
-                return false
+                log.warn("Timeout while getting the container status: {}", containerName)
+                return ContainerStatus.UNKNOWN
             }
 
-            val exitCode = process.exitValue()
-            if (exitCode == 0) {
-                log.info("Successfully removed container: {}", containerName)
-                true
-            } else {
-                log.error("Docker exited with code {} while removing container: {}", exitCode, containerName)
-                false
+            val error = process.errorStream.bufferedReader().readText().trim()
+            if (error.contains("No such object", ignoreCase = true)) {
+                return ContainerStatus.NOT_EXIST
             }
-        } catch (e: Exception) {
-            log.error("Exception while removing container '{}': {}", containerName, e.message, e)
-            false
+
+            val status = process.inputStream.bufferedReader().readText().trim()
+            when (status) {
+                "running" -> ContainerStatus.RUNNING
+                "exited" -> ContainerStatus.STOPPED
+                else -> {
+                    log.warn { "Container status check returned unexpected output: Container '$containerName', Status: $status" }
+                    ContainerStatus.UNKNOWN
+                }
+            }
+        }.getOrElse { e ->
+            log.error(e) { "Failed to get container status for: $containerName" }
+            ContainerStatus.UNKNOWN
         }
     }
 
-    fun getContainerStatus(containerName: String): ContainerStatus {
-        val process = ProcessBuilder(
-            "docker", "inspect", "-f", "{{.State.Status}}", containerName
-        ).start()
-
-        val finished = process.waitFor(10, TimeUnit.SECONDS)
-
-        if (!finished) {
-            process.destroyForcibly()
-            log.warn("Timeout while getting the container status: {}", containerName)
-            return ContainerStatus.UNKNOWN
-        }
-
-        val status = process.inputStream.bufferedReader().readText().trim()
-        val error = process.errorStream.bufferedReader().readText().trim()
-        if (error.contains("No such object", ignoreCase = true)) {
-            return ContainerStatus.NOT_EXIST
-        }
-
-        if (status == "running") {
-            return ContainerStatus.RUNNING
-        }
-        else if (status == "exited") {
-            return ContainerStatus.STOPPED
-        }
-
-        log.warn { "Container status check returned unexpected output: Container '$containerName', Status: $status" }
-
-        return ContainerStatus.UNKNOWN
-    }
-
-    fun getRunningContainerCount(): Int {
-        return try {
-            val countCommand = listOf(
-                "docker", "ps", "-q",
-                "--filter", "label=com.osint.scan=true"
-            )
-
-            val process = ProcessBuilder(countCommand)
-                .redirectErrorStream(true)
-                .start()
-
-            val output = process.inputStream.bufferedReader().readLines()
-            val count = output.count()
-
-            log.info { "Found $count running Docker containers with label com.osint.scan=true" }
-
-            count
-        } catch (e: Exception) {
-            log.error(e) { "Failed to check Docker containers" }
-            throw IllegalStateException("Failed to check Docker containers", e)
-        }
+    fun getRunningContainerCount(): Int = runCatching {
+        ProcessBuilder(
+            "docker", "ps", "-q",
+            "--filter", "label=com.osint.scan=true"
+        )
+            .redirectErrorStream(true)
+            .start()
+            .inputStream
+            .bufferedReader()
+            .useLines { it.count() }
+            .also { count -> log.info { "Found $count running Docker containers with label com.osint.scan=true" } }
+    }.getOrElse { e ->
+        log.error(e) { "Failed to check Docker containers" }
+        throw IllegalStateException("Failed to check Docker containers", e)
     }
 }

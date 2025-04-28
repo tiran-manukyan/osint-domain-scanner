@@ -1,6 +1,7 @@
 package com.osint.backend.service
 
 import com.osint.backend.model.domain.ScanEntity
+import com.osint.backend.model.enums.ContainerStatus
 import com.osint.backend.model.enums.ScanStatus
 import com.osint.backend.properties.ScanProperties
 import com.osint.backend.repository.ScanRepository
@@ -29,28 +30,24 @@ class ScanMonitorService(
     }
 
     private fun handleRunningScans() {
-        val inProgressScans = repository.findAllByStatus(ScanStatus.IN_PROGRESS)
-
-        inProgressScans.forEach { scan ->
+        repository.findAllByStatus(ScanStatus.IN_PROGRESS).forEach { scan ->
             val containerName = ScanNamingUtils.getContainerName(scan.id, scan.domain)
-
-            val status = dockerExecutor.getContainerStatus(containerName)
-            when (status) {
+            when (dockerExecutor.getContainerStatus(containerName)) {
                 ContainerStatus.NOT_EXIST -> handleNotExist(scan)
                 ContainerStatus.STOPPED -> handleStopped(scan, containerName)
                 ContainerStatus.RUNNING -> handleRunning(scan, containerName)
-                ContainerStatus.UNKNOWN -> {}
+                ContainerStatus.UNKNOWN -> Unit
             }
         }
     }
 
-    private fun isTimeoutReached(scan: ScanEntity): Boolean {
-        val timeout = scan.timeoutMinutes
-        if (timeout == null || timeout <= 0L) return false
-
-        val startTime = scan.startedAt ?: return false
-        return Instant.now().isAfter(startTime.plus(timeout, ChronoUnit.MINUTES))
-    }
+    private fun isTimeoutReached(scan: ScanEntity): Boolean =
+        scan.timeoutMinutes
+            ?.takeIf { it > 0 }
+            ?.let { timeout ->
+                scan.startedAt?.plus(timeout, ChronoUnit.MINUTES)?.isBefore(Instant.now())
+            }
+            ?: false
 
     private fun handleStopped(scan: ScanEntity, containerName: String) {
         val content = dockerExecutor.extractScanOutput(containerName)
@@ -65,9 +62,7 @@ class ScanMonitorService(
 
         scanService.finalize(scan.domain, status, result)
 
-        val containerDeleted = dockerExecutor.destroyContainer(containerName)
-
-        if (containerDeleted) {
+        if (dockerExecutor.destroyContainer(containerName)) {
             log.info { "Successfully deleted container: $containerName" }
         } else {
             log.warn { "Failed to delete container: $containerName" }
@@ -79,14 +74,11 @@ class ScanMonitorService(
             return
         }
 
-        val content = dockerExecutor.extractScanOutput(containerName)
-        val result = content.ifBlank { "[NO OUTPUT]" }
+        val result = dockerExecutor.extractScanOutput(containerName).ifBlank { "[NO OUTPUT]" }
 
         scanService.finalize(scan.domain, ScanStatus.TIMEOUT, result)
 
-        val containerDeleted = dockerExecutor.destroyContainer(containerName)
-
-        if (containerDeleted) {
+        if (dockerExecutor.destroyContainer(containerName)) {
             log.info { "Successfully deleted container: $containerName" }
         } else {
             log.warn { "Failed to delete container: $containerName" }
@@ -94,11 +86,11 @@ class ScanMonitorService(
     }
 
     private fun handleNotExist(scan: ScanEntity) {
+        val domain = scan.domain
+
         val result = "[AN ERROR OCCURRED AND NO SCAN OUTPUT IS AVAILABLE]"
-
-        log.error { "Failure: Scan for domain ${scan.domain} could not complete. $result" }
-
-        scanService.finalize(scan.domain, ScanStatus.FAILED, result)
+        log.error { "Failure: Scan for domain $domain could not complete. $result" }
+        scanService.finalize(domain, ScanStatus.FAILED, result)
     }
 
     private fun processQueuedScans() {
@@ -112,13 +104,11 @@ class ScanMonitorService(
         }
 
         val pageable = PageRequest.of(0, slotsAvailable)
-        val scansToRun = repository.findAllByStatusOrderByCreatedAtAsc(ScanStatus.QUEUED, pageable)
-
-        scansToRun.forEach { scan ->
-            try {
+        repository.findAllByStatusOrderByCreatedAtAsc(ScanStatus.QUEUED, pageable).forEach { scan ->
+            runCatching {
                 log.info { "Launching scan for domain: ${scan.domain}" }
                 scanService.launchScan(scan.domain)
-            } catch (ex: Exception) {
+            }.onFailure { ex ->
                 log.error(ex) { "Failed to launch scan for domain: ${scan.domain}. Error: ${ex.message}" }
             }
         }

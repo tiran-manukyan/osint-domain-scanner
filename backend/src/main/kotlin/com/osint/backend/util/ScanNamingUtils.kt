@@ -4,6 +4,6 @@ import java.util.*
 
 object ScanNamingUtils {
 
-    fun getContainerName(scanId: UUID, domain: String): String =
-        "osint-scan-$domain-$scanId"
+    fun getContainerName(scanId: UUID, domain: String, prefix: String = "osint-scan"): String =
+        "${prefix}-$domain-$scanId"
 }
