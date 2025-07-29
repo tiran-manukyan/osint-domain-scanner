@@ -1,0 +1,12 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/osint
+    username: postgres
+    password: postgres
+
+scan:
+  max-active-containers: 20
