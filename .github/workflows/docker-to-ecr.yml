@@ -2,7 +2,7 @@ name: Build and Push Backend & Frontend to ECR
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 jobs:
