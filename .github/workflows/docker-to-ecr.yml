@@ -38,7 +38,9 @@ jobs:
       - name: Build Frontend Docker image
         run: |
           FRONTEND_IMAGE=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_FRONTEND_REPO }}
-          docker build -t $FRONTEND_IMAGE:latest ./frontend
+          docker build \
+            --build-arg REACT_APP_API_BASE_URL=${{ secrets.REACT_APP_API_BASE_URL }} \
+            -t $FRONTEND_IMAGE:latest ./frontend
 
       - name: Push Frontend Docker image
         run: |
