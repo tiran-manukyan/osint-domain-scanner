@@ -1,7 +1,7 @@
 import axios, { type AxiosError } from "axios"
 import type { ScanRequest, ScanEntity, ScanPaginatedResponse } from "../types/scan"
 
-const API_BASE = "http://osint-backend-8080-tcp.amaterasu:8080/api"
+const API_BASE = "http://osint-backend-alb-1757587783.eu-north-1.elb.amazonaws.com:8080/api"
 
 const scanApi = axios.create({
     baseURL: API_BASE,
