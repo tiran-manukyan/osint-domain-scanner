@@ -1,0 +1,8 @@
+databaseChangeLog:
+  - changeSet:
+      id: init-osint-schema
+      author: tiran
+      changes:
+        - sqlFile:
+            path: liquibase/changelog/sql/001-init-osint-schema.sql
+            relativeToChangelogFile: true

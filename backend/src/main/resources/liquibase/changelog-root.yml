@@ -1,4 +1,5 @@
 databaseChangeLog:
-  - includeAll:
-      path: liquibase/changelog/
+  - include:
+      file: liquibase/changelog/001-init-osint-schema.yml
+      relativeToChangelogFile: true
       context: schema
