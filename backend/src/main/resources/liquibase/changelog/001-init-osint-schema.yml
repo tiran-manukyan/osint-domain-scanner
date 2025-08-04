@@ -4,5 +4,5 @@ databaseChangeLog:
       author: tiran
       changes:
         - sqlFile:
-            path: liquibase/changelog/sql/001-init-osint-schema.sql
+            path: sql/001-init-osint-schema.sql
             relativeToChangelogFile: true
